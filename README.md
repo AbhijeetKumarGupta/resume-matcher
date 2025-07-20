@@ -17,7 +17,7 @@
 
 ## Project Overview
 
-**Resume Matcher** is a Next.js application that uses AI-powered semantic matching to connect job postings with candidate resumes. The system leverages OpenAI's embedding technology and Pinecone's vector database to perform intelligent matching based on skills, experience, and job requirements.
+**Resume Matcher** is a Next.js application that uses AI-powered semantic matching to connect job postings with candidate resumes. The system leverages local embedding technology (via @xenova/transformers) and Pinecone's vector database to perform intelligent matching based on skills, experience, and job requirements.
 
 ### Purpose
 
@@ -31,6 +31,7 @@
 - **Scalable**: Can handle large volumes of resumes and job postings
 - **Real-time**: Instant matching results as new content is added
 - **User-friendly**: Clean, modern interface with drag-and-drop functionality
+- **No API Key Required for Embeddings**: Embeddings are generated locally using open-source models
 
 ---
 
@@ -51,9 +52,10 @@
 
 ### AI & Database
 
-- **OpenAI API**: Text embeddings using `text-embedding-3-small` model
+- **@xenova/transformers**: Local text embeddings using `all-MiniLM-L6-v2` model (384-dimensional vectors)
 - **Pinecone**: Vector database for similarity search
-- **Vector Similarity**: 1536-dimensional embeddings for semantic matching
+- **Vector Similarity**: 384-dimensional embeddings for semantic matching
+- **No OpenAI API or payment required**: Model is downloaded on first use (~90MB)
 
 ### Development Tools
 
@@ -81,7 +83,7 @@ resume-matcher-nextjs-final/
 │       ├── job.ts              # Job posting & processing
 │       └── match.ts            # Match retrieval & scoring
 ├── lib/                         # Utility libraries
-│   ├── openai.ts              # OpenAI API integration
+│   ├── xenova.ts              # Local embedding integration (@xenova/transformers)
 │   └── pinecone.ts            # Pinecone database connection
 ├── package.json                # Dependencies & scripts
 ├── next.config.js             # Next.js configuration
@@ -98,7 +100,7 @@ resume-matcher-nextjs-final/
 
 **Key Features**:
 
-- Clean, centered layout with gradient background
+- Clean, centered layout with light background
 - Three main navigation links:
   - Job Listings: Post new job opportunities
   - Matches: View AI-generated matches
@@ -146,7 +148,6 @@ resume-matcher-nextjs-final/
 **Key Features**:
 
 - **Match Scoring**: Shows percentage-based match scores
-- **Keyword Highlighting**: Displays relevant keywords from both jobs and resumes
 - **Job Details**: Shows job titles and descriptions
 - **Responsive Design**: Adapts to different screen sizes
 
@@ -154,7 +155,7 @@ resume-matcher-nextjs-final/
 
 - Fetches matches from `/api/match` endpoint
 - Displays matches grouped by job
-- Shows match scores, candidate names, and relevant keywords
+- Shows match scores and candidate names
 
 ---
 
@@ -169,14 +170,12 @@ resume-matcher-nextjs-final/
 
 1. **File Validation**: Checks for PDF format
 2. **Text Extraction**: Uses `pdf-parse` to extract text content
-3. **Text Enhancement**: Prioritizes key sections (skills, experience, education)
-4. **Embedding Generation**: Creates vector embeddings using OpenAI
-5. **Vector Storage**: Stores in Pinecone with metadata
+3. **Embedding Generation**: Creates vector embeddings using local model
+4. **Vector Storage**: Stores in Pinecone with metadata
 
 **Key Functions**:
 
 - `sanitizeFilename()`: Cleans filename for safe storage
-- `enhanceResumeText()`: Prioritizes important resume sections
 - Vector creation and storage with metadata
 
 ### 2. Job Posting (`/api/job`)
@@ -186,13 +185,11 @@ resume-matcher-nextjs-final/
 
 **Process Flow**:
 
-1. **Text Enhancement**: Prioritizes requirements and skills sections
-2. **Embedding Generation**: Creates vector embeddings
-3. **Vector Storage**: Stores in Pinecone with job metadata
+1. **Embedding Generation**: Creates vector embeddings using local model
+2. **Vector Storage**: Stores in Pinecone with job metadata
 
 **Key Functions**:
 
-- `enhanceJobText()`: Focuses on requirements and qualifications
 - Vector creation with job metadata (title, description)
 
 ### 3. Match Retrieval (`/api/match`)
@@ -204,14 +201,11 @@ resume-matcher-nextjs-final/
 
 1. **Data Retrieval**: Fetches all jobs and resumes from Pinecone
 2. **Similarity Calculation**: Computes vector similarity scores
-3. **Keyword Extraction**: Identifies relevant keywords
-4. **Result Formatting**: Returns structured match data
+3. **Result Formatting**: Returns structured match data
 
 **Key Functions**:
 
-- `extractKeywords()`: Identifies important terms from text
-- `safeString()`: Ensures string type safety
-- Score threshold filtering (5% minimum)
+- Score threshold filtering (50% minimum)
 
 ---
 
@@ -221,21 +215,19 @@ resume-matcher-nextjs-final/
 
 ```
 User Uploads PDF → File Validation → Text Extraction →
-Text Enhancement → OpenAI Embedding → Pinecone Storage
+Local Embedding Generation → Pinecone Storage
 ```
 
 ### Job Posting Flow
 
 ```
-User Submits Job → Text Enhancement → OpenAI Embedding →
-Pinecone Storage
+User Submits Job → Local Embedding Generation → Pinecone Storage
 ```
 
 ### Matching Flow
 
 ```
-Request Matches → Fetch All Vectors → Calculate Similarity →
-Extract Keywords → Return Scored Results
+Request Matches → Fetch All Vectors → Calculate Similarity → Return Scored Results
 ```
 
 ---
@@ -244,15 +236,15 @@ Extract Keywords → Return Scored Results
 
 ### 1. Semantic Matching
 
-- **Vector Embeddings**: 1536-dimensional vectors capture semantic meaning
+- **Vector Embeddings**: 384-dimensional vectors capture semantic meaning
 - **Context Understanding**: Goes beyond exact keyword matches
 - **Similarity Scoring**: Percentage-based match scores
 
 ### 2. Intelligent Text Processing
 
-- **Section Prioritization**: Focuses on skills, experience, and requirements
-- **Noise Reduction**: Removes common resume/job noise words
-- **Keyword Extraction**: Identifies relevant technical terms
+- **Section Prioritization**: Focuses on skills, experience, and requirements (future enhancement)
+- **Noise Reduction**: Removes common resume/job noise words (future enhancement)
+- **Keyword Extraction**: (future enhancement)
 
 ### 3. User Experience
 
@@ -264,7 +256,6 @@ Extract Keywords → Return Scored Results
 ### 4. Scalability
 
 - **Vector Database**: Pinecone handles large-scale similarity search
-- **Chunked Processing**: Handles large documents efficiently
 - **Batch Operations**: Efficient vector storage and retrieval
 
 ---
@@ -275,16 +266,13 @@ Extract Keywords → Return Scored Results
 
 - Node.js 18+
 - npm or yarn
-- OpenAI API key
 - Pinecone API key and index
 
 ### Environment Variables
 
 ```env
-OPENAI_API_KEY=your_openai_api_key
 PINECONE_API_KEY=your_pinecone_api_key
 PINECONE_INDEX=your_pinecone_index_name
-USE_MOCK_EMBEDDINGS=false  # Set to true for testing without OpenAI
 ```
 
 ### Installation Steps
@@ -301,6 +289,8 @@ USE_MOCK_EMBEDDINGS=false  # Set to true for testing without OpenAI
    ```bash
    npm install
    ```
+
+   > **Note:** The first run will download the embedding model (~90MB) automatically.
 
 3. **Configure Environment**
 
@@ -335,7 +325,7 @@ USE_MOCK_EMBEDDINGS=false  # Set to true for testing without OpenAI
 2. **View Matches**:
    - Navigate to "Matches"
    - View AI-generated candidate matches
-   - Review match scores and keywords
+   - Review match scores
    - Identify top candidates for interviews
 
 ### For Candidates
@@ -350,7 +340,6 @@ USE_MOCK_EMBEDDINGS=false  # Set to true for testing without OpenAI
 2. **Get Matched**:
    - Resumes are automatically matched with job postings
    - Higher scores indicate better matches
-   - Keywords show relevant skills and experience
 
 ---
 
@@ -360,20 +349,15 @@ USE_MOCK_EMBEDDINGS=false  # Set to true for testing without OpenAI
 
 1. **Text Preprocessing**:
 
-   - Remove noise words and common resume/job terms
-   - Normalize text (lowercase, remove special characters)
-   - Extract email addresses and phone numbers
+   - (Planned) Remove noise words and common resume/job terms
+   - (Planned) Normalize text (lowercase, remove special characters)
+   - (Planned) Extract email addresses and phone numbers
 
-2. **Text Chunking**:
-
-   - Split large documents into semantic chunks
-   - Preserve sentence and paragraph boundaries
-   - Maximum chunk size: 1000 characters
-
-3. **Embedding Generation**:
-   - Use OpenAI's `text-embedding-3-small` model
-   - Generate 1536-dimensional vectors
-   - Average multiple chunk embeddings for final vector
+2. **Embedding Generation**:
+   - Use @xenova/transformers `all-MiniLM-L6-v2` model
+   - Generate 384-dimensional vectors
+   - No API key or payment required
+   - Model is downloaded on first use (~90MB)
 
 ### Similarity Matching Algorithm
 
@@ -388,41 +372,18 @@ USE_MOCK_EMBEDDINGS=false  # Set to true for testing without OpenAI
    - Score range: 0-1 (0% to 100%)
 
 3. **Result Filtering**:
-   - Apply minimum score threshold (5%)
+   - Apply minimum score threshold (50%)
    - Sort by similarity score (highest first)
-   - Include relevant keywords for context
-
-### Keyword Extraction
-
-1. **Stop Word Removal**:
-
-   - Comprehensive list of common words to ignore
-   - Technical and job-specific stop words
-
-2. **Technical Term Prioritization**:
-
-   - Bonus weight for programming languages and technologies
-   - Focus on skills and tools relevant to job matching
-
-3. **Frequency Analysis**:
-   - Count word occurrences with weighting
-   - Return top 5 most relevant keywords
 
 ### Error Handling & Fallbacks
 
-1. **OpenAI Quota Management**:
-
-   - Graceful fallback to mock embeddings
-   - Warning logs for quota exceeded scenarios
-
-2. **File Processing**:
+1. **File Processing**:
 
    - PDF validation and error handling
    - Safe filename sanitization
 
-3. **API Error Handling**:
+2. **API Error Handling**:
    - Comprehensive error messages
-   - Retry mechanisms for failed requests
 
 ---
 
@@ -432,8 +393,8 @@ USE_MOCK_EMBEDDINGS=false  # Set to true for testing without OpenAI
 
 1. **Text Processing**:
 
-   - Efficient chunking algorithms
-   - Noise word filtering for better embeddings
+   - (Planned) Efficient chunking algorithms
+   - (Planned) Noise word filtering for better embeddings
 
 2. **Vector Operations**:
 
@@ -540,13 +501,12 @@ Enable debug logging by setting:
 
 ```env
 DEBUG=true
-USE_MOCK_EMBEDDINGS=true  # For testing without OpenAI
 ```
 
 ---
 
 ## Conclusion
 
-The Resume Matcher project demonstrates a modern approach to AI-powered recruitment using semantic matching. The combination of Next.js, OpenAI embeddings, and Pinecone vector database creates a scalable and intelligent matching system that can significantly improve the efficiency of the hiring process.
+The Resume Matcher project demonstrates a modern approach to AI-powered recruitment using semantic matching. The combination of Next.js, local embeddings via @xenova/transformers, and Pinecone vector database creates a scalable and intelligent matching system that can significantly improve the efficiency of the hiring process.
 
 The modular architecture allows for easy extension and customization, while the comprehensive error handling and fallback mechanisms ensure robust operation in production environments.

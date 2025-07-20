@@ -7,7 +7,6 @@ interface Match {
     name: string;
   };
   score: number;
-  keywords?: string[];
 }
 
 interface JobMatch {
@@ -17,7 +16,6 @@ interface JobMatch {
     title: string;
     description: string;
   };
-  jobKeywords?: string[];
 }
 
 export default function MatchesPage() {
@@ -99,16 +97,6 @@ export default function MatchesPage() {
               {job.jobMetadata?.description && (
                 <p style={jobDescriptionStyle}>{job.jobMetadata.description}</p>
               )}
-              {job.jobKeywords && job.jobKeywords.length > 0 && (
-                <div style={keywordsRowStyle}>
-                  <span style={keywordsLabelStyle}>Job Keywords:</span>
-                  {job.jobKeywords.map((kw, i) => (
-                    <span key={i} style={keywordStyle}>
-                      {kw}
-                    </span>
-                  ))}
-                </div>
-              )}
               <div style={matchesListStyle}>
                 {job.matches.length === 0 ? (
                   <p style={noMatchesStyle}>
@@ -122,21 +110,9 @@ export default function MatchesPage() {
                           {match.metadata.name}
                         </span>
                         <span style={matchScoreStyle}>
-                          Score: {match.score.toFixed(1)}%
+                          Score: {(match.score * 100).toFixed(1)}%
                         </span>
                       </div>
-                      {match.keywords && match.keywords.length > 0 && (
-                        <div style={keywordsRowStyle}>
-                          <span style={keywordsLabelStyle}>
-                            Resume Keywords:
-                          </span>
-                          {match.keywords.map((kw, j) => (
-                            <span key={j} style={keywordStyle}>
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   ))
                 )}

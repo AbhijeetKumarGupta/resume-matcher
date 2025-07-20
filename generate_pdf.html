@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Resume Matcher - Project Documentation</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: white;
+      }
+
+      h1 {
+        color: #2c3e50;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 10px;
+        font-size: 2.5em;
+      }
+
+      h2 {
+        color: #34495e;
+        border-bottom: 2px solid #ecf0f1;
+        padding-bottom: 5px;
+        margin-top: 30px;
+        font-size: 1.8em;
+      }
+
+      h3 {
+        color: #2c3e50;
+        margin-top: 25px;
+        font-size: 1.4em;
+      }
+
+      h4 {
+        color: #34495e;
+        margin-top: 20px;
+        font-size: 1.2em;
+      }
+
+      .toc {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        border-left: 4px solid #3498db;
+      }
+
+      .toc ul {
+        list-style-type: none;
+        padding-left: 0;
+      }
+
+      .toc li {
+        margin: 8px 0;
+      }
+
+      .toc a {
+        color: #2c3e50;
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .toc a:hover {
+        color: #3498db;
+      }
+
+      code {
+        background: #f4f4f4;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+      }
+
+      pre {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        overflow-x: auto;
+        border-left: 4px solid #3498db;
+      }
+
+      .file-structure {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 0.9em;
+        border-left: 4px solid #27ae60;
+        white-space: pre;
+        margin-bottom: 20px;
+      }
+
+      .feature-box {
+        background: #e8f5e8;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        border-left: 4px solid #27ae60;
+      }
+
+      .warning-box {
+        background: #fff3cd;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        border-left: 4px solid #ffc107;
+      }
+
+      .info-box {
+        background: #d1ecf1;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        border-left: 4px solid #17a2b8;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+      }
+
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+      }
+
+      th {
+        background: #f8f9fa;
+        font-weight: bold;
+      }
+
+      .flow-diagram {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+        text-align: center;
+        border: 2px dashed #3498db;
+      }
+
+      .page-break {
+        page-break-before: always;
+      }
+
+      @media print {
+        body {
+          font-size: 12pt;
+        }
+
+        h1 {
+          font-size: 18pt;
+        }
+
+        h2 {
+          font-size: 16pt;
+        }
+
+        h3 {
+          font-size: 14pt;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Resume Matcher - Next.js Project Documentation</h1>
+
+    <div class="toc">
+      <h2>Table of Contents</h2>
+      <ul>
+        <li><a href="#overview">1. Project Overview</a></li>
+        <li><a href="#architecture">2. Architecture & Technology Stack</a></li>
+        <li><a href="#structure">3. Project Structure</a></li>
+        <li><a href="#components">4. Core Components</a></li>
+        <li><a href="#api">5. API Endpoints</a></li>
+        <li><a href="#data-flow">6. Data Flow</a></li>
+        <li><a href="#features">7. Key Features</a></li>
+        <li><a href="#setup">8. Setup & Configuration</a></li>
+        <li><a href="#usage">9. Usage Guide</a></li>
+        <li><a href="#technical">10. Technical Implementation Details</a></li>
+      </ul>
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2 id="overview">1. Project Overview</h2>
+
+    <p>
+      <strong>Resume Matcher</strong> is a Next.js application that uses
+      AI-powered semantic matching to connect job postings with candidate
+      resumes. The system leverages OpenAI's embedding technology and Pinecone's
+      vector database to perform intelligent matching based on skills,
+      experience, and job requirements.
+    </p>
+
+    <div class="feature-box">
+      <h4>Purpose</h4>
+      <ul>
+        <li>
+          <strong>For Recruiters:</strong> Post job listings and automatically
+          find matching candidates
+        </li>
+        <li>
+          <strong>For Candidates:</strong> Upload resumes and get matched with
+          relevant job opportunities
+        </li>
+        <li>
+          <strong>For HR Teams:</strong> Streamline the hiring process with
+          AI-powered candidate screening
+        </li>
+      </ul>
+    </div>
+
+    <div class="feature-box">
+      <h4>Key Benefits</h4>
+      <ul>
+        <li>
+          <strong>Semantic Matching:</strong> Goes beyond keyword matching to
+          understand context and meaning
+        </li>
+        <li>
+          <strong>Scalable:</strong> Can handle large volumes of resumes and job
+          postings
+        </li>
+        <li>
+          <strong>Real-time:</strong> Instant matching results as new content is
+          added
+        </li>
+        <li>
+          <strong>User-friendly:</strong> Clean, modern interface with
+          drag-and-drop functionality
+        </li>
+      </ul>
+    </div>
+
+    <h2 id="architecture">2. Architecture & Technology Stack</h2>
+
+    <h3>Frontend</h3>
+    <ul>
+      <li><strong>Next.js 13.4.0:</strong> React framework with App Router</li>
+      <li><strong>React 18.2.0:</strong> UI library</li>
+      <li><strong>TypeScript:</strong> Type-safe development</li>
+      <li><strong>CSS-in-JS:</strong> Inline styles for component styling</li>
+    </ul>
+
+    <h3>Backend</h3>
+    <ul>
+      <li><strong>Next.js API Routes:</strong> Server-side API endpoints</li>
+      <li><strong>Formidable:</strong> File upload handling</li>
+      <li><strong>PDF-Parse:</strong> PDF text extraction</li>
+    </ul>
+
+    <h3>AI & Database</h3>
+    <ul>
+      <li>
+        <strong>@xenova/transformers:</strong> Local text embeddings using
+        <code>all-MiniLM-L6-v2</code> model (384-dimensional vectors)
+      </li>
+      <li><strong>Pinecone:</strong> Vector database for similarity search</li>
+      <li>
+        <strong>Vector Similarity:</strong> 384-dimensional embeddings for
+        semantic matching
+      </li>
+      <li>
+        <strong>No OpenAI API or payment required:</strong> Model is downloaded
+        on first use (~90MB)
+      </li>
+    </ul>
+
+    <h3>Development Tools</h3>
+    <ul>
+      <li><strong>ESLint:</strong> Code linting</li>
+      <li><strong>TypeScript:</strong> Static type checking</li>
+    </ul>
+
+    <h2 id="structure">3. Project Structure</h2>
+
+    <pre class="file-structure">
+resume-matcher-nextjs-final/
+├── app/                          # Next.js App Router
+│   ├── layout.tsx               # Root layout component
+│   ├── page.tsx                 # Home page with navigation
+│   ├── upload-resume/
+│   │   └── page.tsx            # Resume upload interface
+│   ├── job-listings/
+│   │   └── page.tsx            # Job posting interface
+│   └── matches/
+│       └── page.tsx            # Match results display
+├── pages/
+│   └── api/                     # API routes
+│       ├── resume.ts           # Resume upload & processing
+│       ├── job.ts              # Job posting & processing
+│       └── match.ts            # Match retrieval & scoring
+├── lib/                         # Utility libraries
+│   ├── xenova.ts              # Local embedding integration (@xenova/transformers)
+│   └── pinecone.ts            # Pinecone database connection
+├── package.json                # Dependencies & scripts
+├── next.config.js             # Next.js configuration
+└── tsconfig.json              # TypeScript configuration
+    </pre>
+
+    <div class="page-break"></div>
+
+    <h2 id="components">4. Core Components</h2>
+
+    <h3>1. Home Page (<code>app/page.tsx</code>)</h3>
+    <p><strong>Purpose:</strong> Main navigation hub for the application</p>
+
+    <div class="feature-box">
+      <h4>Key Features:</h4>
+      <ul>
+        <li>Clean, centered layout with gradient background</li>
+        <li>
+          Three main navigation links:
+          <ul>
+            <li>Job Listings: Post new job opportunities</li>
+            <li>Matches: View AI-generated matches</li>
+            <li>Upload Resume: Add candidate resumes</li>
+          </ul>
+        </li>
+        <li>Uses inline CSS with modern design elements</li>
+      </ul>
+    </div>
+
+    <h3>2. Resume Upload (<code>app/upload-resume/page.tsx</code>)</h3>
+    <p>
+      <strong>Purpose:</strong> Interface for uploading and processing candidate
+      resumes
+    </p>
+
+    <div class="feature-box">
+      <h4>Key Features:</h4>
+      <ul>
+        <li>
+          <strong>Drag & Drop:</strong> Modern file upload with visual feedback
+        </li>
+        <li>
+          <strong>PDF Validation:</strong> Ensures only PDF files are accepted
+        </li>
+        <li>
+          <strong>Progress Feedback:</strong> Loading states and success/error
+          messages
+        </li>
+        <li>
+          <strong>File Preview:</strong> Shows selected file name and size
+        </li>
+      </ul>
+    </div>
+
+    <h3>3. Job Listings (<code>app/job-listings/page.tsx</code>)</h3>
+    <p><strong>Purpose:</strong> Interface for posting new job opportunities</p>
+
+    <div class="feature-box">
+      <h4>Key Features:</h4>
+      <ul>
+        <li>
+          <strong>Form Validation:</strong> Ensures both title and description
+          are provided
+        </li>
+        <li>
+          <strong>Rich Text Input:</strong> Large textarea for detailed job
+          descriptions
+        </li>
+        <li>
+          <strong>Real-time Feedback:</strong> Loading states and success/error
+          messages
+        </li>
+      </ul>
+    </div>
+
+    <h3>4. Matches Display (<code>app/matches/page.tsx</code>)</h3>
+    <p>
+      <strong>Purpose:</strong> Displays AI-generated matches between jobs and
+      resumes
+    </p>
+
+    <div class="feature-box">
+      <h4>Key Features:</h4>
+      <ul>
+        <li>
+          <strong>Match Scoring:</strong> Shows percentage-based match scores
+        </li>
+        <li>
+          <strong>Keyword Highlighting:</strong> Displays relevant keywords from
+          both jobs and resumes
+        </li>
+        <li><strong>Job Details:</strong> Shows job titles and descriptions</li>
+        <li>
+          <strong>Responsive Design:</strong> Adapts to different screen sizes
+        </li>
+      </ul>
+    </div>
+
+    <h2 id="api">5. API Endpoints</h2>
+
+    <h3>1. Resume Upload (<code>/api/resume</code>)</h3>
+    <p>
+      <strong>Method:</strong> POST<br />
+      <strong>Purpose:</strong> Process and store resume files
+    </p>
+
+    <div class="flow-diagram">
+      <strong>Process Flow:</strong><br />
+      File Validation → Text Extraction → Text Enhancement → Embedding
+      Generation → Vector Storage
+    </div>
+
+    <div class="info-box">
+      <h4>Key Functions:</h4>
+      <ul>
+        <li>
+          <code>sanitizeFilename()</code>: Cleans filename for safe storage
+        </li>
+        <li>
+          <code>enhanceResumeText()</code>: Prioritizes important resume
+          sections
+        </li>
+        <li>Vector creation and storage with metadata</li>
+      </ul>
+    </div>
+
+    <h3>2. Job Posting (<code>/api/job</code>)</h3>
+    <p>
+      <strong>Method:</strong> POST<br />
+      <strong>Purpose:</strong> Process and store job postings
+    </p>
+
+    <div class="flow-diagram">
+      <strong>Process Flow:</strong><br />
+      Text Enhancement → Embedding Generation → Vector Storage
+    </div>
+
+    <h3>3. Match Retrieval (<code>/api/match</code>)</h3>
+    <p>
+      <strong>Method:</strong> GET<br />
+      <strong>Purpose:</strong> Retrieve and score matches between jobs and
+      resumes
+    </p>
+
+    <div class="flow-diagram">
+      <strong>Process Flow:</strong><br />
+      Data Retrieval → Similarity Calculation → Keyword Extraction → Result
+      Formatting
+    </div>
+
+    <div class="page-break"></div>
+
+    <h2 id="data-flow">6. Data Flow</h2>
+
+    <h3>Resume Upload Flow</h3>
+    <div class="flow-diagram">
+      User Uploads PDF → File Validation → Text Extraction → Text Enhancement →
+      Embedding Generation → Pinecone Storage
+    </div>
+
+    <h3>Job Posting Flow</h3>
+    <div class="flow-diagram">
+      User Submits Job → Text Enhancement → Embedding Generation → Pinecone
+      Storage
+    </div>
+
+    <h3>Matching Flow</h3>
+    <div class="flow-diagram">
+      Request Matches → Fetch All Vectors → Calculate Similarity → Extract
+      Keywords → Return Scored Results
+    </div>
+
+    <h2 id="features">7. Key Features</h2>
+
+    <h3>1. Semantic Matching</h3>
+    <ul>
+      <li>
+        <strong>Vector Embeddings:</strong> 384-dimensional vectors capture
+        semantic meaning
+      </li>
+      <li>
+        <strong>Context Understanding:</strong> Goes beyond exact keyword
+        matches
+      </li>
+      <li>
+        <strong>Similarity Scoring:</strong> Percentage-based match scores
+      </li>
+    </ul>
+
+    <h3>2. Intelligent Text Processing</h3>
+    <ul>
+      <li>
+        <strong>Section Prioritization:</strong> Focuses on skills, experience,
+        and requirements
+      </li>
+      <li>
+        <strong>Noise Reduction:</strong> Removes common resume/job noise words
+      </li>
+      <li>
+        <strong>Keyword Extraction:</strong> Identifies relevant technical terms
+      </li>
+    </ul>
+
+    <h3>3. User Experience</h3>
+    <ul>
+      <li><strong>Drag & Drop:</strong> Modern file upload interface</li>
+      <li>
+        <strong>Real-time Feedback:</strong> Loading states and progress
+        indicators
+      </li>
+      <li>
+        <strong>Responsive Design:</strong> Works on desktop and mobile devices
+      </li>
+      <li>
+        <strong>Error Handling:</strong> Graceful error messages and recovery
+      </li>
+    </ul>
+
+    <h3>4. Scalability</h3>
+    <ul>
+      <li>
+        <strong>Vector Database:</strong> Pinecone handles large-scale
+        similarity search
+      </li>
+      <li>
+        <strong>Chunked Processing:</strong> Handles large documents efficiently
+      </li>
+      <li>
+        <strong>Batch Operations:</strong> Efficient vector storage and
+        retrieval
+      </li>
+    </ul>
+
+    <h2 id="setup">8. Setup & Configuration</h2>
+
+    <h3>Prerequisites</h3>
+    <ul>
+      <li>Node.js 18+</li>
+      <li>npm or yarn</li>
+      <li>Pinecone API key and index</li>
+    </ul>
+
+    <h3>Environment Variables</h3>
+    <pre>
+PINECONE_API_KEY=your_pinecone_api_key
+PINECONE_INDEX=your_pinecone_index_name
+USE_MOCK_EMBEDDINGS=false  # Set to true for testing without embeddings
+    </pre>
+
+    <h3>Installation Steps</h3>
+    <ol>
+      <li>
+        <strong>Clone Repository</strong>
+        <pre>
+git clone &lt;repository-url&gt;
+cd resume-matcher-nextjs-final</pre
+        >
+      </li>
+      <li>
+        <strong>Install Dependencies</strong>
+        <pre>npm install</pre>
+      </li>
+      <li>
+        <strong>Configure Environment</strong>
+        <ul>
+          <li>Create <code>.env.local</code> file</li>
+          <li>Add required API keys</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Run Development Server</strong>
+        <pre>npm run dev</pre>
+      </li>
+      <li>
+        <strong>Build for Production</strong>
+        <pre>
+npm run build
+npm start</pre
+        >
+      </li>
+    </ol>
+
+    <div class="page-break"></div>
+
+    <h2 id="usage">9. Usage Guide</h2>
+
+    <h3>For Recruiters/HR Teams</h3>
+
+    <h4>1. Post a Job:</h4>
+    <ol>
+      <li>Navigate to "Job Listings"</li>
+      <li>Enter job title and detailed description</li>
+      <li>Include specific requirements and skills</li>
+      <li>Submit to create job posting</li>
+    </ol>
+
+    <h4>2. View Matches:</h4>
+    <ol>
+      <li>Navigate to "Matches"</li>
+      <li>View AI-generated candidate matches</li>
+      <li>Review match scores and keywords</li>
+      <li>Identify top candidates for interviews</li>
+    </ol>
+
+    <h3>For Candidates</h3>
+
+    <h4>1. Upload Resume:</h4>
+    <ol>
+      <li>Navigate to "Upload Resume"</li>
+      <li>Drag and drop PDF resume or click to browse</li>
+      <li>Ensure resume is in PDF format</li>
+      <li>Wait for upload confirmation</li>
+    </ol>
+
+    <h4>2. Get Matched:</h4>
+    <ul>
+      <li>Resumes are automatically matched with job postings</li>
+      <li>Higher scores indicate better matches</li>
+      <li>Keywords show relevant skills and experience</li>
+    </ul>
+
+    <h2 id="technical">10. Technical Implementation Details</h2>
+
+    <h3>Vector Embedding Process</h3>
+
+    <h4>1. Text Preprocessing:</h4>
+    <ul>
+      <li>
+        <strong>Text Preprocessing:</strong> (Planned) Remove noise words and
+        common resume/job terms
+      </li>
+      <li>
+        <strong>Embedding Generation:</strong> Use @xenova/transformers
+        <code>all-MiniLM-L6-v2</code> model (384-dimensional vectors, no API key
+        required)
+      </li>
+    </ul>
+
+    <h4>2. Text Chunking:</h4>
+    <ul>
+      <li>Split large documents into semantic chunks</li>
+      <li>Preserve sentence and paragraph boundaries</li>
+      <li>Maximum chunk size: 1000 characters</li>
+    </ul>
+
+    <h4>3. Embedding Generation:</h4>
+    <ul>
+      <li>
+        <strong>Embedding Generation:</strong> Creates vector embeddings using
+        local model
+      </li>
+      <li>Generate 384-dimensional vectors</li>
+      <li>Average multiple chunk embeddings for final vector</li>
+    </ul>
+
+    <h3>Similarity Matching Algorithm</h3>
+
+    <h4>1. Vector Retrieval:</h4>
+    <ul>
+      <li>Fetch all job and resume vectors from Pinecone</li>
+      <li>Separate jobs and resumes by ID prefix</li>
+    </ul>
+
+    <h4>2. Similarity Calculation:</h4>
+    <ul>
+      <li>Compute cosine similarity between job and resume vectors</li>
+      <li>Score range: 0-1 (0% to 100%)</li>
+    </ul>
+
+    <h4>3. Result Filtering:</h4>
+    <ul>
+      <li>
+        <strong>Result Filtering:</strong> Apply minimum score threshold (50%)
+      </li>
+      <li>Sort by similarity score (highest first)</li>
+      <li>Include relevant keywords for context</li>
+    </ul>
+
+    <h3>Keyword Extraction</h3>
+
+    <h4>1. Stop Word Removal:</h4>
+    <ul>
+      <li>Comprehensive list of common words to ignore</li>
+      <li>Technical and job-specific stop words</li>
+    </ul>
+
+    <h4>2. Technical Term Prioritization:</h4>
+    <ul>
+      <li>Bonus weight for programming languages and technologies</li>
+      <li>Focus on skills and tools relevant to job matching</li>
+    </ul>
+
+    <h4>3. Frequency Analysis:</h4>
+    <ul>
+      <li>Count word occurrences with weighting</li>
+      <li>Return top 5 most relevant keywords</li>
+    </ul>
+
+    <h3>Error Handling & Fallbacks</h3>
+
+    <div class="warning-box">
+      <h4>1. OpenAI Quota Management:</h4>
+      <ul>
+        <li>
+          <strong>OpenAI Quota Management:</strong>
+          <span style="color: #888"
+            >(No longer required, embeddings are local)</span
+          >
+        </li>
+      </ul>
+    </div>
+
+    <div class="warning-box">
+      <h4>2. File Processing:</h4>
+      <ul>
+        <li>PDF validation and error handling</li>
+        <li>Safe filename sanitization</li>
+      </ul>
+    </div>
+
+    <div class="warning-box">
+      <h4>3. API Error Handling:</h4>
+      <ul>
+        <li>Comprehensive error messages</li>
+        <li>Retry mechanisms for failed requests</li>
+      </ul>
+    </div>
+
+    <h3>Performance Considerations</h3>
+
+    <h4>Optimization Strategies:</h4>
+    <ul>
+      <li>
+        <strong>Text Processing:</strong> Efficient chunking algorithms and
+        noise word filtering
+      </li>
+      <li>
+        <strong>Vector Operations:</strong> Batch processing for multiple
+        embeddings
+      </li>
+      <li>
+        <strong>Database Operations:</strong> Optimized Pinecone queries with
+        metadata filtering
+      </li>
+    </ul>
+
+    <h4>Scalability Features:</h4>
+    <ul>
+      <li>
+        <strong>Horizontal Scaling:</strong> Stateless API design for multiple
+        instances
+      </li>
+      <li>
+        <strong>Database Scaling:</strong> Pinecone handles vector database
+        scaling
+      </li>
+      <li>
+        <strong>Caching:</strong> Consider Redis for caching frequent queries
+      </li>
+    </ul>
+
+    <h3>Security Considerations</h3>
+
+    <div class="info-box">
+      <h4>Data Protection:</h4>
+      <ul>
+        <li>
+          <strong>File Upload Security:</strong> PDF validation, filename
+          sanitization, size limits
+        </li>
+        <li>
+          <strong>API Security:</strong> Input validation, error message
+          sanitization, rate limiting
+        </li>
+        <li><strong>Environment Variables:</strong> Secure API key storage</li>
+      </ul>
+    </div>
+
+    <h3>Future Enhancements</h3>
+
+    <h4>Potential Improvements:</h4>
+    <ul>
+      <li>
+        <strong>Advanced Matching:</strong> Multi-modal matching,
+        industry-specific algorithms
+      </li>
+      <li>
+        <strong>User Management:</strong> Authentication, company-specific job
+        boards
+      </li>
+      <li>
+        <strong>Analytics & Reporting:</strong> Match success tracking, hiring
+        funnel analytics
+      </li>
+      <li>
+        <strong>Integration Capabilities:</strong> ATS integration, LinkedIn
+        import, email notifications
+      </li>
+    </ul>
+
+    <h3>Troubleshooting</h3>
+
+    <div class="warning-box">
+      <h4>Common Issues:</h4>
+      <ul>
+        <li>
+          <strong>Upload Failures:</strong> Check file format, size limits,
+          network connectivity
+        </li>
+        <li>
+          <strong>API Errors:</strong> Verify environment variables, API key
+          validity, quota limits
+        </li>
+        <li>
+          <strong>Match Quality:</strong> Improve job descriptions, ensure
+          relevant keywords in resumes
+        </li>
+      </ul>
+    </div>
+
+    <h4>Debug Mode:</h4>
+    <p>Enable debug logging by setting:</p>
+    <pre>
+DEBUG=true
+USE_MOCK_EMBEDDINGS=true  # For testing without embeddings
+    </pre>
+
+    <div class="page-break"></div>
+
+    <h2>Conclusion</h2>
+
+    <p>
+      The Resume Matcher project now uses local embeddings via
+      @xenova/transformers, removing the need for OpenAI API keys and enabling
+      free, scalable, and private semantic matching.
+    </p>
+
+    <p>
+      The modular architecture allows for easy extension and customization,
+      while the comprehensive error handling and fallback mechanisms ensure
+      robust operation in production environments.
+    </p>
+
+    <div class="info-box">
+      <h4>Key Takeaways:</h4>
+      <ul>
+        <li>
+          Semantic matching provides more accurate results than traditional
+          keyword matching
+        </li>
+        <li>Vector databases enable efficient similarity search at scale</li>
+        <li>
+          Modern web technologies create responsive and user-friendly interfaces
+        </li>
+        <li>Proper error handling and fallbacks ensure system reliability</li>
+      </ul>
+    </div>
+
+    <hr style="margin: 40px 0; border: none; border-top: 2px solid #ecf0f1" />
+
+    <p style="text-align: center; color: #7f8c8d; font-size: 0.9em">
+      <strong>Resume Matcher Documentation</strong><br />
+      Generated on: <span id="date"></span><br />
+      Version: 1.0.0
+    </p>
+
+    <script>
+      document.getElementById("date").textContent =
+        new Date().toLocaleDateString();
+    </script>
+  </body>
+</html>
