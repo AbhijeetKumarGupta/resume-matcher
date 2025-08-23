@@ -6,6 +6,7 @@ export default function UploadResumePage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [chunkingMethod, setChunkingMethod] = useState("agentic");
 
   async function upload() {
     if (!file) {
@@ -23,13 +24,16 @@ export default function UploadResumePage() {
       const formData = new FormData();
       formData.append("resume", file);
 
-      const response = await fetch("/api/resume", {
+      const response = await fetch(`/api/resume?chunking=${chunkingMethod}`, {
         method: "POST",
         body: formData,
       });
 
       if (response.ok) {
-        alert("Resume uploaded successfully!");
+        const result = await response.json();
+        alert(
+          `Resume uploaded successfully! Created ${result.chunks} chunks using ${result.chunkingMethod} method.`
+        );
         setFile(null);
         // Reset file input
         const fileInput = document.getElementById(
@@ -115,6 +119,33 @@ export default function UploadResumePage() {
                 <p style={uploadHintStyle}>Only PDF files are supported</p>
               </div>
             )}
+          </div>
+        </div>
+
+        <div style={chunkingSelectorStyle}>
+          <label style={labelStyle}>Chunking Method:</label>
+          <select
+            value={chunkingMethod}
+            onChange={(e) => setChunkingMethod(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="fixed">Fixed-Size Chunking</option>
+            <option value="sentence">Sentence-Based Chunking</option>
+            <option value="paragraph">Paragraph-Based Chunking</option>
+            <option value="semantic">Semantic-Based Chunking</option>
+            <option value="agentic">Agentic Chunking (Recommended)</option>
+          </select>
+          <div style={methodDescriptionStyle}>
+            {chunkingMethod === "fixed" &&
+              "Splits text into chunks of fixed size with overlap"}
+            {chunkingMethod === "sentence" &&
+              "Splits text at sentence boundaries"}
+            {chunkingMethod === "paragraph" &&
+              "Splits text at paragraph boundaries"}
+            {chunkingMethod === "semantic" &&
+              "Creates semantically coherent chunks"}
+            {chunkingMethod === "agentic" &&
+              "Uses intelligent rules for contextually aware chunks"}
           </div>
         </div>
 
@@ -258,5 +289,43 @@ const buttonStyle: React.CSSProperties = {
   cursor: "pointer",
   transition: "transform 0.2s",
   width: "100%",
-  opacity: 1,
+};
+
+const chunkingSelectorStyle: React.CSSProperties = {
+  marginBottom: "2rem",
+  padding: "1rem",
+  background: "#f9fafb",
+  borderRadius: "8px",
+  border: "1px solid #d1d5db",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: "0.875rem",
+  color: "#374151",
+  marginBottom: "0.5rem",
+  display: "block",
+};
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "0.75rem 1rem",
+  borderRadius: "6px",
+  border: "1px solid #d1d5db",
+  fontSize: "0.875rem",
+  color: "#374151",
+  background: "white",
+  cursor: "pointer",
+  appearance: "none",
+  backgroundImage:
+    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%234b5563' %3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 1rem center",
+  backgroundSize: "1.5em",
+};
+
+const methodDescriptionStyle: React.CSSProperties = {
+  fontSize: "0.75rem",
+  color: "#6b7280",
+  marginTop: "0.5rem",
+  lineHeight: "1.25",
 };

@@ -25,6 +25,9 @@ export default function Home() {
         <Link href="/upload-resume" style={navStyle}>
           Upload Resume
         </Link>
+        <Link href="/chunking-test" style={navStyle}>
+          Chunking Test
+        </Link>
       </nav>
     </main>
   );

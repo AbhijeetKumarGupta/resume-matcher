@@ -6,6 +6,7 @@ export default function JobListingPage() {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [chunkingMethod, setChunkingMethod] = useState("semantic");
 
   async function submitJob() {
     if (!title.trim() || !desc.trim()) {
@@ -15,7 +16,7 @@ export default function JobListingPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/job", {
+      const response = await fetch(`/api/job?chunking=${chunkingMethod}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -26,7 +27,10 @@ export default function JobListingPage() {
       });
 
       if (response.ok) {
-        alert("Job posted successfully!");
+        const result = await response.json();
+        alert(
+          `Job posted successfully! Created ${result.chunks} chunks using ${result.chunkingMethod} method.`
+        );
         setTitle("");
         setDesc("");
       } else {
@@ -68,6 +72,35 @@ export default function JobListingPage() {
             style={textareaStyle}
             rows={6}
           />
+        </div>
+
+        <div style={chunkingSelectorStyle}>
+          <label style={labelStyle}>Chunking Method:</label>
+          <select
+            value={chunkingMethod}
+            onChange={(e) => setChunkingMethod(e.target.value)}
+            style={selectStyle}
+          >
+            <option value="fixed">Fixed-Size Chunking</option>
+            <option value="sentence">Sentence-Based Chunking</option>
+            <option value="paragraph">Paragraph-Based Chunking</option>
+            <option value="semantic">
+              Semantic-Based Chunking (Recommended)
+            </option>
+            <option value="agentic">Agentic Chunking</option>
+          </select>
+          <div style={methodDescriptionStyle}>
+            {chunkingMethod === "fixed" &&
+              "Splits text into chunks of fixed size with overlap"}
+            {chunkingMethod === "sentence" &&
+              "Splits text at sentence boundaries"}
+            {chunkingMethod === "paragraph" &&
+              "Splits text at paragraph boundaries"}
+            {chunkingMethod === "semantic" &&
+              "Creates semantically coherent chunks"}
+            {chunkingMethod === "agentic" &&
+              "Uses intelligent rules for contextually aware chunks"}
+          </div>
         </div>
 
         <button onClick={submitJob} disabled={isSubmitting} style={buttonStyle}>
@@ -155,4 +188,33 @@ const buttonStyle: React.CSSProperties = {
   cursor: "pointer",
   transition: "transform 0.2s",
   width: "100%",
+};
+
+const chunkingSelectorStyle: React.CSSProperties = {
+  marginBottom: "1.5rem",
+  padding: "0.75rem",
+  border: "2px solid #e5e7eb",
+  borderRadius: "8px",
+  fontSize: "1rem",
+  transition: "border-color 0.2s",
+  backgroundColor: "#f9fafb",
+  display: "flex",
+  flexDirection: "column",
+  gap: "0.5rem",
+};
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "0.75rem",
+  border: "2px solid #e5e7eb",
+  borderRadius: "8px",
+  fontSize: "1rem",
+  transition: "border-color 0.2s",
+  backgroundColor: "white",
+};
+
+const methodDescriptionStyle: React.CSSProperties = {
+  fontSize: "0.875rem",
+  color: "#6b7280",
+  marginTop: "0.5rem",
 };
