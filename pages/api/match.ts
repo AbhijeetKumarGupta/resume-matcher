@@ -27,6 +27,7 @@ export default async function handler(
       vector: Array.from({ length: 384 }, () => 0.1), // Simple vector to get all records
       topK: totalVectors,
       includeMetadata: true,
+      includeValues: true, // 👈 required for cosine similarity
     });
 
     const allVectors = allVectorsResponse.matches || [];
@@ -117,6 +118,7 @@ export default async function handler(
           jobMatches.push({
             resumeId,
             resumeName: resumeMetadata?.name || "Unknown",
+            metadata: resumeMetadata,
             score: averageScore,
             chunkMatches,
             totalJobChunks: jobChunks.length,
@@ -158,9 +160,7 @@ function calculateCosineSimilarity(
   vectorA: number[],
   vectorB: number[]
 ): number {
-  if (vectorA.length !== vectorB.length) {
-    return 0;
-  }
+  if (!vectorA || !vectorB || vectorA.length !== vectorB.length) return 0;
 
   let dotProduct = 0;
   let normA = 0;
