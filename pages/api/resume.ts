@@ -9,6 +9,7 @@ import {
   CHUNKING_PRESETS,
   ChunkingConfig,
 } from "../../lib/chunking";
+import { PineconeRecord, RecordMetadata } from "@pinecone-database/pinecone";
 
 export const config = { api: { bodyParser: false } };
 
@@ -63,7 +64,7 @@ export default async function handler(
         const fullText = parsed.text;
 
         // Apply chunking strategy
-        const chunks = chunkText(fullText, chunkingConfig);
+        const chunks = await chunkText(fullText, chunkingConfig);
 
         // Create embeddings for each chunk
         const chunkEmbeddings = await Promise.all(
@@ -86,7 +87,7 @@ export default async function handler(
             startIndex: chunk.startIndex,
             endIndex: chunk.endIndex,
           },
-        }));
+        })) as PineconeRecord<RecordMetadata>[];
 
         await index.upsert(vectors);
 

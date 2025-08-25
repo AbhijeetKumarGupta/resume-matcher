@@ -1,6 +1,14 @@
 // Chunking strategies for text processing
 // Easily switch between different chunking methods for testing
 
+import {
+  Pinecone,
+  PineconeRecord,
+  RecordMetadata,
+} from "@pinecone-database/pinecone";
+import { createEmbedding } from "./xenova";
+import { v4 as uuidv4 } from "uuid";
+
 export interface ChunkingConfig {
   method: "fixed" | "sentence" | "paragraph" | "semantic" | "agentic";
   maxChunkSize?: number; // For fixed-size chunking
@@ -8,23 +16,40 @@ export interface ChunkingConfig {
   minChunkSize?: number; // Minimum chunk size for semantic/agentic
   preserveHeaders?: boolean; // Whether to preserve section headers
   includeMetadata?: boolean; // Whether to include chunk metadata
+  namespace?: string; // For Pinecone storage
 }
 
 export interface TextChunk {
+  id?: string;
   text: string;
-  startIndex: number;
-  endIndex: number;
-  metadata?: {
-    chunkType?: string;
-    section?: string;
-    importance?: number;
-  };
+  startIndex?: number;
+  endIndex?: number;
+  metadata?: Record<string, any>;
+  embedding?: number[];
+}
+
+interface DocumentAnalysis {
+  documentType: string;
+  complexity: number;
+  structure: { sections: string[] };
+  semanticCoherence: number;
+  entities: string[];
+}
+
+interface SemanticSection {
+  start: number;
+  end: number;
+  type: string;
+  importance: number;
 }
 
 /**
  * Main chunking function that routes to different strategies
  */
-export function chunkText(text: string, config: ChunkingConfig): TextChunk[] {
+export async function chunkText(
+  text: string,
+  config: ChunkingConfig
+): Promise<TextChunk[]> {
   const normalizedText = text.trim();
 
   switch (config.method) {
@@ -37,7 +62,7 @@ export function chunkText(text: string, config: ChunkingConfig): TextChunk[] {
     case "semantic":
       return semanticBasedChunking(normalizedText, config);
     case "agentic":
-      return agenticChunking(normalizedText, config);
+      return await agenticChunking(normalizedText, config);
     default:
       throw new Error(`Unknown chunking method: ${config.method}`);
   }
@@ -315,74 +340,305 @@ function semanticBasedChunking(
 /**
  * 5. Agentic Chunking
  * Uses intelligent rules to create contextually aware chunks
+ * Updated to always use embedding-based semantic grouping for true "agentic" behavior
  */
-function agenticChunking(text: string, config: ChunkingConfig): TextChunk[] {
-  const maxSize = config.maxChunkSize || 1000;
-  const minSize = config.minChunkSize || 200;
-  const chunks: TextChunk[] = [];
+export async function agenticChunking(
+  text: string,
+  config: ChunkingConfig
+): Promise<TextChunk[]> {
+  try {
+    const analysis = await analyzeDocumentIntelligently(text);
 
-  // Parse the document structure
-  const documentStructure = parseDocumentStructure(text);
-  let currentChunk = "";
-  let startIndex = 0;
-  let chunkIndex = 0;
+    // Force agentic-semantic strategy to ensure the agent handles chunking dynamically
+    const strategy = { name: "agentic-semantic" };
 
-  for (const section of documentStructure) {
-    const sectionText = text.slice(section.start, section.end).trim();
-
-    if (!sectionText) continue;
-
-    // Decision logic for chunking
-    const shouldStartNewChunk = shouldStartNewChunkLogic(
-      currentChunk,
-      sectionText,
-      section,
-      maxSize,
-      minSize
+    let chunks = await executeChunkingStrategy(
+      text,
+      strategy,
+      analysis,
+      config
     );
 
-    if (shouldStartNewChunk && currentChunk.length >= minSize) {
-      chunks.push({
-        text: currentChunk.trim(),
-        startIndex,
-        endIndex: startIndex + currentChunk.length,
-        metadata: {
-          chunkType: "agentic",
-          section: section.type,
-          importance: section.importance,
-        },
-      });
-
-      startIndex = section.start;
-      currentChunk = sectionText;
-      chunkIndex++;
-    } else {
-      currentChunk += (currentChunk ? "\n\n" : "") + sectionText;
+    if (!Array.isArray(chunks)) {
+      console.warn("Chunking returned non-array, forcing empty array");
+      chunks = [];
     }
-  }
 
-  // Add the last chunk
-  if (currentChunk.trim()) {
-    chunks.push({
-      text: currentChunk.trim(),
-      startIndex,
-      endIndex: startIndex + currentChunk.length,
-      metadata: {
-        chunkType: "agentic",
-        importance: 1.0,
-      },
-    });
+    const optimizedChunks = await optimizeChunkQuality(chunks, config);
+
+    try {
+      await storeChunkingResults(text, strategy, optimizedChunks, analysis);
+    } catch (e) {
+      console.warn("Pinecone storage failed:", e);
+    }
+
+    return optimizedChunks;
+  } catch (err) {
+    console.error("Agentic chunking failed:", err);
+    return [];
+  }
+}
+
+// Safe executeChunkingStrategy with added agentic-semantic strategy
+export async function executeChunkingStrategy(
+  text: string,
+  strategy: { name: string },
+  analysis: DocumentAnalysis,
+  config: ChunkingConfig
+): Promise<TextChunk[]> {
+  const maxSize = config.maxChunkSize || 500;
+  const minSize = config.minChunkSize || 100;
+  const overlapSize = config.overlapSize || 50;
+  const chunks: TextChunk[] = [];
+  if (!text || text.trim().length === 0) return chunks;
+
+  if (strategy.name === "agentic-semantic") {
+    // Semantic grouping using embeddings for similarity-based breaks
+    const sentences = text
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s);
+    if (sentences.length === 0) return [];
+
+    const embeddings = await Promise.all(
+      sentences.map((s) => createEmbedding(s))
+    );
+    let currentText = sentences[0];
+    let currentLength = sentences[0].length;
+    let currentSum = (embeddings[0] as number[]).slice();
+    let currentCount = 1;
+    const threshold = 0.5; // Similarity threshold for grouping
+
+    for (let i = 1; i < sentences.length; i++) {
+      const s = sentences[i];
+      const emb = embeddings[i] as number[];
+
+      // Compute average embedding of current chunk
+      const currentAvg = currentSum.map((x) => x / currentCount);
+
+      // Compute similarity to the prospective new sentence
+      const sim = cosineSimilarity(currentAvg, emb);
+
+      const wouldExceed = currentLength + s.length + 1 > maxSize;
+
+      if (!wouldExceed && sim > threshold) {
+        // Add to current chunk
+        currentText += " " + s;
+        currentLength += s.length + 1;
+        for (let j = 0; j < currentSum.length; j++) {
+          currentSum[j] += emb[j];
+        }
+        currentCount++;
+      } else {
+        // Push current chunk
+        const chunkAvg = currentSum.map((x) => x / currentCount);
+        chunks.push({
+          id: uuidv4(),
+          text: currentText,
+          embedding: chunkAvg,
+        });
+
+        // Start new chunk
+        currentText = s;
+        currentLength = s.length;
+        currentSum = emb.slice();
+        currentCount = 1;
+      }
+    }
+
+    // Push the last chunk
+    if (currentText) {
+      const chunkAvg = currentSum.map((x) => x / currentCount);
+      chunks.push({
+        id: uuidv4(),
+        text: currentText,
+        embedding: chunkAvg,
+      });
+    }
+  } else if (strategy.name === "sentence-grouping") {
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    let buffer = "";
+
+    for (let s of sentences) {
+      s = s.trim();
+      if (!s) continue;
+
+      if ((buffer + s).length > maxSize && buffer.length > 0) {
+        const embedding = (await createEmbedding(buffer)) as number[];
+        chunks.push({ id: uuidv4(), text: buffer, embedding });
+        buffer = s;
+      } else {
+        buffer += (buffer ? " " : "") + s;
+      }
+    }
+
+    if (buffer.length > 0) {
+      const embedding = (await createEmbedding(buffer)) as number[];
+      chunks.push({ id: uuidv4(), text: buffer, embedding });
+    }
+  } else {
+    // sliding window
+    for (let i = 0; i < text.length; i += maxSize - overlapSize) {
+      const chunkText = text.slice(i, i + maxSize);
+      if (chunkText.length < minSize) continue;
+      const embedding = (await createEmbedding(chunkText)) as number[];
+      chunks.push({ id: uuidv4(), text: chunkText, embedding });
+    }
   }
 
   return chunks;
 }
 
-// Helper functions for semantic chunking
-interface SemanticSection {
-  start: number;
-  end: number;
-  type: string;
-  importance: number;
+// Safe getChunkingStats
+export function getChunkingStats(chunks: TextChunk[]) {
+  if (!Array.isArray(chunks) || chunks.length === 0) {
+    return {
+      totalChunks: 0,
+      averageChunkSize: 0,
+      minChunkSize: 0,
+      maxChunkSize: 0,
+      totalTextLength: 0,
+    };
+  }
+
+  const sizes = chunks.map((c) => c.text.length);
+  const totalLength = sizes.reduce((sum, s) => sum + s, 0);
+
+  return {
+    totalChunks: chunks.length,
+    averageChunkSize: Math.round(totalLength / chunks.length),
+    minChunkSize: Math.min(...sizes),
+    maxChunkSize: Math.max(...sizes),
+    totalTextLength: totalLength,
+  };
+}
+
+function cosineSimilarity(a: number[], b: number[]): number {
+  if (a.length !== b.length) throw new Error("Vectors must be same length");
+  let dot = 0,
+    normA = 0,
+    normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  const normProduct = Math.sqrt(normA) * Math.sqrt(normB);
+  return normProduct === 0 ? 0 : dot / normProduct;
+}
+
+// 1. Analyze document with Xenova embeddings
+export async function analyzeDocumentIntelligently(
+  text: string
+): Promise<DocumentAnalysis> {
+  const sentences = text
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s);
+  const embeddings = await Promise.all(
+    sentences.map((s) => createEmbedding(s))
+  );
+
+  // Compute average similarity between sentences
+  let sims: number[] = [];
+  for (let i = 0; i < embeddings.length - 1; i++) {
+    sims.push(
+      cosineSimilarity(embeddings[i] as number[], embeddings[i + 1] as number[])
+    );
+  }
+  const coherence =
+    sims.length > 0 ? sims.reduce((a, b) => a + b, 0) / sims.length : 1.0;
+
+  return {
+    documentType: text.length > 2000 ? "long-form" : "short-form",
+    complexity: sentences.length,
+    structure: { sections: [text.slice(0, 80) + "..."] }, // naive placeholder
+    semanticCoherence: coherence,
+    entities: [], // optional: NER can be added later
+  };
+}
+
+// 2. Choose chunking strategy (unused now, but kept for potential expansion)
+export async function selectOptimalChunkingStrategy(
+  analysis: DocumentAnalysis,
+  text: string
+) {
+  if (analysis.semanticCoherence > 0.8 && text.length < 2000) {
+    return { name: "agentic-semantic" };
+  } else if (text.length < 2000) {
+    return { name: "sentence-grouping" };
+  } else {
+    return { name: "sliding-window" };
+  }
+}
+
+// 4. Optimize chunk quality (basic merge/split logic)
+export async function optimizeChunkQuality(
+  chunks: TextChunk[],
+  config: ChunkingConfig
+): Promise<TextChunk[]> {
+  const minSize = config.minChunkSize || 100;
+
+  // Simple rule: merge too-small chunks with the next one
+  const optimized: TextChunk[] = [];
+  let buffer: TextChunk | null = null;
+
+  for (let chunk of chunks) {
+    if (chunk.text.length < minSize && buffer) {
+      buffer.text += " " + chunk.text;
+      // Recompute embedding as average or new
+      buffer.embedding = (await createEmbedding(buffer.text)) as number[];
+    } else {
+      if (buffer) {
+        optimized.push(buffer);
+        buffer = null;
+      }
+      if (chunk.text.length < minSize) {
+        buffer = chunk;
+      } else {
+        optimized.push(chunk);
+      }
+    }
+  }
+  if (buffer) optimized.push(buffer);
+  return optimized;
+}
+
+// 5. Store results in Pinecone
+export async function storeChunkingResults(
+  text: string,
+  strategy: { name: string },
+  chunks: TextChunk[],
+  analysis: DocumentAnalysis
+) {
+  const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
+  const index = pc.index("agentic-chunks");
+
+  const validChunks = chunks.filter(
+    (chunk) =>
+      chunk.id &&
+      chunk.embedding &&
+      Array.isArray(chunk.embedding) &&
+      chunk.embedding.every((v) => typeof v === "number")
+  );
+
+  const records: PineconeRecord<RecordMetadata>[] = validChunks.map(
+    (chunk) => ({
+      id: chunk.id!,
+      values: chunk.embedding as number[], // assert as number[]
+      metadata: {
+        text: chunk.text,
+        strategy: strategy.name,
+        documentType: analysis.documentType,
+      },
+    })
+  );
+
+  if (records.length > 0) {
+    await index.upsert(records);
+  } else {
+    console.warn("No valid chunks to upsert");
+  }
 }
 
 function findSemanticBreaks(text: string): SemanticSection[] {
@@ -397,7 +653,7 @@ function findSemanticBreaks(text: string): SemanticSection[] {
     // Detect various semantic elements
     if (isHeader(line)) {
       // Save any accumulated content before this header
-      if (currentContentStart < i && currentContentStart < currentStart) {
+      if (currentContentStart < currentStart) {
         const contentText = text
           .slice(currentContentStart, currentStart)
           .trim();
@@ -414,19 +670,19 @@ function findSemanticBreaks(text: string): SemanticSection[] {
       // Save the header
       sections.push({
         start: currentStart,
-        end: text.indexOf("\n", currentStart) || text.length,
+        end: currentStart + line.length,
         type: "header",
         importance: 1.0,
       });
 
-      currentStart = text.indexOf("\n", currentStart) || text.length;
+      currentStart += line.length + 1; // +1 for newline
       currentContentStart = currentStart;
     }
 
     // Detect bullet points or numbered lists
     else if (isList(line)) {
       // Save any accumulated content before this list
-      if (currentContentStart < i && currentContentStart < currentStart) {
+      if (currentContentStart < currentStart) {
         const contentText = text
           .slice(currentContentStart, currentStart)
           .trim();
@@ -446,19 +702,19 @@ function findSemanticBreaks(text: string): SemanticSection[] {
         listEnd++;
       }
 
-      // Save the list
+      const listStart = currentStart;
+      const listEndIndex = lines
+        .slice(i, listEnd)
+        .reduce((acc, l) => acc + l.length + 1, currentStart);
+
       sections.push({
-        start: currentStart,
-        end:
-          text.indexOf("\n", text.indexOf(lines[listEnd - 1], currentStart)) ||
-          text.length,
+        start: listStart,
+        end: listEndIndex,
         type: "list",
         importance: 0.8,
       });
 
-      currentStart =
-        text.indexOf("\n", text.indexOf(lines[listEnd - 1], currentStart)) ||
-        text.length;
+      currentStart = listEndIndex;
       currentContentStart = currentStart;
       i = listEnd - 1;
     }
@@ -466,7 +722,7 @@ function findSemanticBreaks(text: string): SemanticSection[] {
     // Detect code blocks
     else if (isCodeBlock(line)) {
       // Save any accumulated content before this code block
-      if (currentContentStart < i && currentContentStart < currentStart) {
+      if (currentContentStart < currentStart) {
         const contentText = text
           .slice(currentContentStart, currentStart)
           .trim();
@@ -486,19 +742,19 @@ function findSemanticBreaks(text: string): SemanticSection[] {
         codeEnd++;
       }
 
-      // Save the code block
+      const codeStart = currentStart;
+      const codeEndIndex = lines
+        .slice(i, codeEnd)
+        .reduce((acc, l) => acc + l.length + 1, currentStart);
+
       sections.push({
-        start: currentStart,
-        end:
-          text.indexOf("\n", text.indexOf(lines[codeEnd - 1], currentStart)) ||
-          text.length,
+        start: codeStart,
+        end: codeEndIndex,
         type: "code",
         importance: 0.9,
       });
 
-      currentStart =
-        text.indexOf("\n", text.indexOf(lines[codeEnd - 1], currentStart)) ||
-        text.length;
+      currentStart = codeEndIndex;
       currentContentStart = currentStart;
       i = codeEnd - 1;
     }
@@ -506,7 +762,7 @@ function findSemanticBreaks(text: string): SemanticSection[] {
     // Detect tables
     else if (isTable(line)) {
       // Save any accumulated content before this table
-      if (currentContentStart < i && currentContentStart < currentStart) {
+      if (currentContentStart < currentStart) {
         const contentText = text
           .slice(currentContentStart, currentStart)
           .trim();
@@ -526,19 +782,19 @@ function findSemanticBreaks(text: string): SemanticSection[] {
         tableEnd++;
       }
 
-      // Save the table
+      const tableStart = currentStart;
+      const tableEndIndex = lines
+        .slice(i, tableEnd)
+        .reduce((acc, l) => acc + l.length + 1, currentStart);
+
       sections.push({
-        start: currentStart,
-        end:
-          text.indexOf("\n", text.indexOf(lines[tableEnd - 1], currentStart)) ||
-          text.length,
+        start: tableStart,
+        end: tableEndIndex,
         type: "table",
         importance: 0.85,
       });
 
-      currentStart =
-        text.indexOf("\n", text.indexOf(lines[tableEnd - 1], currentStart)) ||
-        text.length;
+      currentStart = tableEndIndex;
       currentContentStart = currentStart;
       i = tableEnd - 1;
     }
@@ -546,7 +802,7 @@ function findSemanticBreaks(text: string): SemanticSection[] {
     // Detect quotes or citations
     else if (isQuote(line)) {
       // Save any accumulated content before this quote
-      if (currentContentStart < i && currentContentStart < currentStart) {
+      if (currentContentStart < currentStart) {
         const contentText = text
           .slice(currentContentStart, currentStart)
           .trim();
@@ -566,19 +822,19 @@ function findSemanticBreaks(text: string): SemanticSection[] {
         quoteEnd++;
       }
 
-      // Save the quote
+      const quoteStart = currentStart;
+      const quoteEndIndex = lines
+        .slice(i, quoteEnd)
+        .reduce((acc, l) => acc + l.length + 1, currentStart);
+
       sections.push({
-        start: currentStart,
-        end:
-          text.indexOf("\n", text.indexOf(lines[quoteEnd - 1], currentStart)) ||
-          text.length,
+        start: quoteStart,
+        end: quoteEndIndex,
         type: "quote",
         importance: 0.8,
       });
 
-      currentStart =
-        text.indexOf("\n", text.indexOf(lines[quoteEnd - 1], currentStart)) ||
-        text.length;
+      currentStart = quoteEndIndex;
       currentContentStart = currentStart;
       i = quoteEnd - 1;
     }
@@ -586,7 +842,7 @@ function findSemanticBreaks(text: string): SemanticSection[] {
     // Detect definitions or key-value pairs
     else if (isDefinition(line)) {
       // Save any accumulated content before this definition
-      if (currentContentStart < i && currentContentStart < currentStart) {
+      if (currentContentStart < currentStart) {
         const contentText = text
           .slice(currentContentStart, currentStart)
           .trim();
@@ -600,28 +856,28 @@ function findSemanticBreaks(text: string): SemanticSection[] {
         }
       }
 
-      // Save the definition
       sections.push({
         start: currentStart,
-        end: text.indexOf("\n", currentStart) || text.length,
+        end: currentStart + line.length,
         type: "definition",
         importance: 0.85,
       });
 
-      currentStart = text.indexOf("\n", currentStart) || text.length;
+      currentStart += line.length + 1;
       currentContentStart = currentStart;
     }
 
     // Regular content line
     else if (line.length > 0) {
-      // This is content, update the content end position
-      currentStart = text.indexOf("\n", currentStart) || text.length;
+      currentStart += line.length + 1;
+    } else {
+      currentStart += 1; // empty line
     }
   }
 
   // Save any remaining content at the end
   if (currentContentStart < text.length) {
-    const contentText = text.slice(currentContentStart, text.length).trim();
+    const contentText = text.slice(currentContentStart).trim();
     if (contentText.length > 0) {
       sections.push({
         start: currentContentStart,
@@ -685,163 +941,11 @@ function isDefinition(line: string): boolean {
   return (
     /^[A-Z][a-z]*\s*[:=]\s/.test(line) || // Key: value format
     /^[A-Z][a-z]*\s*[-–]\s/.test(line) || // Key - value format
-    /^[A-Z][a-z]*\s*\([^)]+\)\s*[:=]\s/.test(line) || // Key (context): value
+    /^[A-Z][a-z]*\s*$$ [^)]+ $$\s*[:=]\s/.test(line) || // Key (context): value
     /^[A-Z][a-z]*\s*is\s/.test(line) || // "X is Y" definitions
     /^[A-Z][a-z]*\s*refers to\s/.test(line) || // "X refers to Y" definitions
     /^[A-Z][a-z]*\s*means\s/.test(line) // "X means Y" definitions
   );
-}
-
-// Helper functions for agentic chunking
-interface DocumentSection {
-  start: number;
-  end: number;
-  type: string;
-  importance: number;
-  content: string;
-}
-
-function parseDocumentStructure(text: string): DocumentSection[] {
-  const sections: DocumentSection[] = [];
-  const lines = text.split("\n");
-  let currentStart = 0;
-  let currentType = "content";
-  let currentImportance = 0.7;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-
-    if (isHeader(line)) {
-      // Save previous section
-      if (currentStart < i) {
-        sections.push({
-          start: currentStart,
-          end: text.indexOf("\n", currentStart) || text.length,
-          type: currentType,
-          importance: currentImportance,
-          content: text.slice(
-            currentStart,
-            text.indexOf("\n", currentStart) || text.length
-          ),
-        });
-      }
-
-      currentStart = text.indexOf(line, currentStart);
-      currentType = "header";
-      currentImportance = 1.0;
-    } else if (isList(line)) {
-      // Save previous section
-      if (currentStart < i) {
-        sections.push({
-          start: currentStart,
-          end: text.indexOf("\n", currentStart) || text.length,
-          type: currentType,
-          importance: currentImportance,
-          content: text.slice(
-            currentStart,
-            text.indexOf("\n", currentStart) || text.length
-          ),
-        });
-      }
-
-      currentStart = text.indexOf(line, currentStart);
-      currentType = "list";
-      currentImportance = 0.8;
-    } else if (line.length === 0) {
-      // Empty line might indicate section break
-      if (currentStart < i) {
-        sections.push({
-          start: currentStart,
-          end: text.indexOf("\n", currentStart) || text.length,
-          type: currentType,
-          importance: currentImportance,
-          content: text.slice(
-            currentStart,
-            text.indexOf("\n", currentStart) || text.length
-          ),
-        });
-      }
-
-      currentStart = i + 1;
-      currentType = "content";
-      currentImportance = 0.7;
-    }
-  }
-
-  // Add remaining content
-  if (currentStart < text.length) {
-    sections.push({
-      start: currentStart,
-      end: text.length,
-      type: currentType,
-      importance: currentImportance,
-      content: text.slice(currentStart, text.length),
-    });
-  }
-
-  return sections;
-}
-
-function shouldStartNewChunkLogic(
-  currentChunk: string,
-  newSection: string,
-  section: DocumentSection,
-  maxSize: number,
-  minSize: number
-): boolean {
-  // Always start new chunk if current is too long
-  if (currentChunk.length + newSection.length > maxSize) {
-    return true;
-  }
-
-  // Start new chunk for high-importance sections if current chunk is substantial
-  if (section.importance > 0.9 && currentChunk.length >= minSize) {
-    return true;
-  }
-
-  // Start new chunk for headers if current chunk is substantial
-  if (section.type === "header" && currentChunk.length >= minSize) {
-    return true;
-  }
-
-  // Start new chunk for lists if they're substantial
-  if (section.type === "list" && newSection.length > maxSize * 0.5) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Utility function to get chunking statistics
- */
-export function getChunkingStats(chunks: TextChunk[]): {
-  totalChunks: number;
-  averageChunkSize: number;
-  minChunkSize: number;
-  maxChunkSize: number;
-  totalTextLength: number;
-} {
-  if (chunks.length === 0) {
-    return {
-      totalChunks: 0,
-      averageChunkSize: 0,
-      minChunkSize: 0,
-      maxChunkSize: 0,
-      totalTextLength: 0,
-    };
-  }
-
-  const sizes = chunks.map((chunk) => chunk.text.length);
-  const totalLength = sizes.reduce((sum, size) => sum + size, 0);
-
-  return {
-    totalChunks: chunks.length,
-    averageChunkSize: Math.round(totalLength / chunks.length),
-    minChunkSize: Math.min(...sizes),
-    maxChunkSize: Math.max(...sizes),
-    totalTextLength: totalLength,
-  };
 }
 
 /**

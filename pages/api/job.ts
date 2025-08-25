@@ -7,6 +7,7 @@ import {
   CHUNKING_PRESETS,
   ChunkingConfig,
 } from "../../lib/chunking";
+import { PineconeRecord, RecordMetadata } from "@pinecone-database/pinecone";
 
 export default async function handler(
   req: NextApiRequest,
@@ -39,7 +40,7 @@ export default async function handler(
     const jobText = title + "\n" + description;
 
     // Apply chunking strategy
-    const chunks = chunkText(jobText, chunkingConfig);
+    const chunks = await chunkText(jobText, chunkingConfig);
 
     // Create embeddings for each chunk
     const chunkEmbeddings = await Promise.all(
@@ -62,7 +63,7 @@ export default async function handler(
         startIndex: chunk.startIndex,
         endIndex: chunk.endIndex,
       },
-    }));
+    })) as PineconeRecord<RecordMetadata>[];
 
     await index.upsert(vectors);
     return res.status(200).json({

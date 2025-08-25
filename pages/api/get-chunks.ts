@@ -26,11 +26,11 @@ export default async function handler(
         ...(method === "sentence" && { maxChunkSize: 350 }),
         ...(method === "paragraph" && { maxChunkSize: 350 }),
         ...(method === "semantic" && { maxChunkSize: 350, minChunkSize: 150 }),
-        ...(method === "agentic" && { maxChunkSize: 350, minChunkSize: 150 }),
+        ...(method === "agentic" && { maxChunkSize: 600, minChunkSize: 150 }),
       };
 
       // Apply chunking
-      const chunks = chunkText(text, chunkingConfig);
+      const chunks = await chunkText(text, chunkingConfig);
 
       // Get statistics
       const stats = getChunkingStats(chunks);
